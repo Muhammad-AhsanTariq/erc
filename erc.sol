@@ -11,7 +11,7 @@ contract Token  {
     mapping(address => mapping(address => uint)) public allowance;
     string public name = "IEC-Token";
     string public symbol = "IT";
-    uint public InitialPrice = 1;
+    uint public InitialPrice = 1 ether;
     event Transfer(address from , address to , uint value);
    event Approve(address owner,address spender,uint value);
   
@@ -22,10 +22,31 @@ contract Token  {
         require(owner==msg.sender, "Unauthorized User");
         _;
     }
+     /**
+     * Internal transfer, only can be called by this contract
+     */
+    function _transfer(address _from, address _to, uint _value) internal {
+        // Prevent transfer to 0x0 address. Use burn() instead
+        require(_to != address(0x0));
+        // Check if the sender has enough
+        require(balanceOf[_from] >= _value);
+        // Check for overflows
+        require(balanceOf[_to] + _value > balanceOf[_to]);
+        // Save this for an assertion in the future
+        uint previousBalances = balanceOf[_from] + balanceOf[_to];
+        // Subtract from the sender
+        balanceOf[_from] -= _value;
+        // Add the same to the recipient
+        balanceOf[_to] += _value;
+        emit Transfer(_from, _to, _value);
+        // Asserts are used to use static analysis to find bugs in your code. They should never fail
+        assert(balanceOf[_from] + balanceOf[_to] == previousBalances);
+    }
 
     
-    function transfer(address recipient, uint _amount) external onlyme returns(bool){
-      amount=_amount;
+    
+    function transfer(address recipient, uint amount) external onlyme returns(bool){
+      
         balanceOf[msg.sender] -= amount;
         balanceOf[recipient] += amount;
 
@@ -34,8 +55,8 @@ contract Token  {
     }
   
     address public spender;
-    function approve(address _spender, uint _amount) public onlyme returns (bool){
-      amount=_amount;
+    function approve(address _spender, uint amount) public onlyme returns (bool){
+      
       spender=_spender;
       allowance[msg.sender][_spender] = amount;
     
@@ -43,8 +64,8 @@ contract Token  {
       return true;
     }
 
-    function transferFrom(address from,address recipient,uint _amount) external returns(bool){
-      amount=_amount;
+    function transferFrom(address from,address recipient,uint amount) external returns(bool){
+      
       require(msg.sender==spender,"only spender allowed");
       allowance[owner][from] = amount;
       balanceOf[from] -= amount;
@@ -53,15 +74,15 @@ contract Token  {
       emit Transfer(from, recipient, amount);
       return true;
     }
-    uint public amount;
-    function mint(uint _amount)  onlyme external {
-      amount=_amount;
+    
+    function mint(uint amount)  onlyme external {
+      
         balanceOf[msg.sender] += amount;
         totalSupply += amount;
     }
  
-    function burn(uint _amount) onlyme external {
-      amount=_amount;
+    function burn(uint amount) onlyme external {
+      
         balanceOf[msg.sender] -= amount; 
         totalSupply -= amount;
 
@@ -71,14 +92,13 @@ contract Token  {
          InitialPrice=newPrice;
       
     }
-      function buy(address payable _to , uint _value) public  payable {
+      function buy() public  payable {
       require (msg.sender != owner, "owner not allowed");
-      require(_value == InitialPrice, "Please send more ether");
-      _to.transfer(amount);
+      require(msg.value == InitialPrice, "Please send more ether");
+      _transfer(owner,msg.sender,1);
+      payable(owner).transfer(msg.value);
 
       
     
 }
 }
-
-
